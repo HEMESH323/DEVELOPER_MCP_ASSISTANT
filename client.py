@@ -12,6 +12,8 @@ from google import genai
 from google.genai import types
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp import ClientSession
+from mcp.client.sse import sse_client
 
 PARAMS = StdioServerParameters(command=sys.executable, args=["server.py"])
 
@@ -34,7 +36,7 @@ async def demo(session):
 
 async def ask(session, question):
     # Initialize Google GenAI client (reads GEMINI_API_KEY from environment)
-    ai_client = genai.Client()
+    ai_client = genai.Client(http_options={"api_version": "v1beta"})
     # Using gemini-2.5-flash as the fast, free-tier default model
     model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -95,7 +97,9 @@ async def ask(session, question):
 
 async def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "tools"
-    async with stdio_client(PARAMS) as (read, write):
+    
+    # Connect to the MCP server running over HTTP/SSE
+    async with sse_client("http://localhost:8000/sse") as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             if mode == "tools":

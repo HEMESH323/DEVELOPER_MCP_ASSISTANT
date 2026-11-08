@@ -71,6 +71,30 @@ def get_recent_git_commits(limit: int = 5) -> list[str]:
     except Exception as e:
         return [f"Error fetching git logs: {str(e)} (Ensure this is a git repository)"]
 
+@mcp.tool()
+def get_git_diff() -> str:
+    """Get the git diff of current unstaged changes in the repository to review code modifications."""
+    try:
+        result = subprocess.run(
+            ["git", "diff"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout if result.stdout.strip() else "No unstaged git changes found in the repository."
+    except Exception as e:
+        return f"Error fetching git diff: {str(e)}"
+
+@mcp.tool()
+def update_task_status(task_id: int, status: str) -> str:
+    """Update the status of an engineering task (e.g., 'IN_PROGRESS', 'CLOSED', 'OPEN') by its ID."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE tasks SET status = ? WHERE id = ?", (status.upper(), task_id))
+    conn.commit()
+    conn.close()
+    return f"Successfully updated task ID {task_id} to status: {status.upper()}"
+
 @mcp.resource("db://schema")
 def database_schema() -> str:
     """Expose the database schema description as a readable resource."""
@@ -82,4 +106,4 @@ def review_workflow() -> str:
     return "Review the database schema db://schema, search for open tasks, and summarize what engineering priorities need attention."
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="sse")
